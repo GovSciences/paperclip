@@ -3,8 +3,8 @@ module Paperclip
     # Amazon's S3 file hosting service is a scalable, easy place to store files for
     # distribution. You can find out more about it at http://aws.amazon.com/s3
     #
-    # To use Paperclip with S3, include the +aws-sdk+ gem in your Gemfile:
-    #   gem 'aws-sdk', '~> 1.6'
+    # To use Paperclip with S3, include the +aws-sdk-s3+ gem in your Gemfile:
+    #   gem 'aws-sdk-s3'
     # There are a few S3-specific options for has_attached_file:
     # * +s3_credentials+: Takes a path, a File, a Hash or a Proc. The path (or File) must point
     #   to a YAML file containing the +access_key_id+ and +secret_access_key+ that Amazon
@@ -93,6 +93,7 @@ module Paperclip
     #   S3 (strictly speaking) does not support directories, you can still use a / to
     #   separate parts of your file name.
     # * +s3_host_name+: If you are using your bucket in Tokyo region etc, write host_name.
+    # * +s3_region+: For aws-sdk-s3, s3_region is required.
     # * +s3_metadata+: These key/value pairs will be stored with the
     #   object.  This option works by prefixing each key with
     #   "x-amz-meta-" before sending it as a header on the object
@@ -108,15 +109,22 @@ module Paperclip
     #       :thumb => :reduced_reduncancy
     #     }
     #   Or globally:
-    #     :s3_storage_class => :reduced_redundancy
+    #     :s3_storage_class => :REDUCED_REDUNDANCY
+    #
+    #   Other storage classes, such as <tt>:STANDARD_IA</tt>, are also available—see the
+    #   documentation for the <tt>aws-sdk-s3</tt> gem for the full list.
 
     module S3
       def self.extended base
         begin
-          require 'aws-sdk'
+          require "aws-sdk-s3"
         rescue LoadError => e
-          e.message << " (You may need to install the aws-sdk gem)"
-          raise e
+          begin
+            require "aws-sdk" # Fallback to outdated gem
+          rescue LoadError
+            e.message << " (You may need to install the aws-sdk-s3 gem)"
+            raise e
+          end
         end unless defined?(AWS::Core)
 
         # Overriding log formatter to make sure it return a UTF-8 string
