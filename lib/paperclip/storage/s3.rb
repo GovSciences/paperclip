@@ -119,27 +119,8 @@ module Paperclip
         begin
           require "aws-sdk-s3"
         rescue LoadError => e
-          begin
-            require "aws-sdk" # Fallback to outdated gem
-          rescue LoadError
-            e.message << " (You may need to install the aws-sdk-s3 gem)"
-            raise e
-          end
-        end unless defined?(AWS::Core)
-
-        # Overriding log formatter to make sure it return a UTF-8 string
-        if defined?(AWS::Core::LogFormatter)
-          AWS::Core::LogFormatter.class_eval do
-            def summarize_hash(hash)
-              hash.map { |key, value| ":#{key}=>#{summarize_value(value)}".force_encoding('UTF-8') }.sort.join(',')
-            end
-          end
-        elsif defined?(AWS::Core::ClientLogging)
-          AWS::Core::ClientLogging.class_eval do
-            def sanitize_hash(hash)
-              hash.map { |key, value| "#{sanitize_value(key)}=>#{sanitize_value(value)}".force_encoding('UTF-8') }.sort.join(',')
-            end
-          end
+          e.message << " (You may need to install the aws-sdk-s3 gem)"
+          raise e
         end
 
         base.instance_eval do
@@ -172,6 +153,8 @@ module Paperclip
           @options[:url] = @options[:url].inspect if @options[:url].is_a?(Symbol)
 
           @http_proxy = @options[:http_proxy] || nil
+
+          @use_accelerate_endpoint = @options[:use_accelerate_endpoint]
         end
 
         Paperclip.interpolates(:s3_alias_url) do |attachment, style|

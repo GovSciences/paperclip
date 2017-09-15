@@ -232,6 +232,7 @@ describe Paperclip::Storage::S3 do
     end
   end
 
+  # the s3_host_name will be defined by the s3_region
   context "s3_host_name" do
     before do
       rebuild_model storage: :s3,
@@ -270,7 +271,60 @@ describe Paperclip::Storage::S3 do
 
     it "uses s3_host_name as a proc if available" do
       @dummy.value = "s3.something.com"
-      assert_equal "http://s3.something.com/bucket/avatars/data", @dummy.avatar.url(:original, timestamp: false)
+      assert_equal "//s3.something.com/bucket/avatars/data", @dummy.avatar.url(:original, timestamp: false)
+    end
+  end
+
+  context "use_accelerate_endpoint" do
+    context "defaults to false" do
+      before do
+        rebuild_model(
+          storage: :s3,
+          s3_credentials: {},
+          bucket: "bucket",
+          path: ":attachment/:basename:dotextension",
+          s3_host_name: "s3-ap-northeast-1.amazonaws.com",
+          s3_region: "ap-northeast-1",
+        )
+        @dummy = Dummy.new
+        @dummy.avatar = stringy_file
+        @dummy.stubs(:new_record?).returns(false)
+      end
+
+      it "returns a url based on an :s3_host_name path" do
+        assert_match %r{^//s3-ap-northeast-1.amazonaws.com/bucket/avatars/data[^\.]},
+          @dummy.avatar.url
+      end
+
+      it "uses the S3 client with the use_accelerate_endpoint config is false" do
+        expect(@dummy.avatar.s3_bucket.client.config.use_accelerate_endpoint).to be(false)
+      end
+    end
+
+    context "set to true" do
+      before do
+        rebuild_model(
+          storage: :s3,
+          s3_credentials: {},
+          bucket: "bucket",
+          path: ":attachment/:basename:dotextension",
+          s3_host_name: "s3-accelerate.amazonaws.com",
+          s3_region: "ap-northeast-1",
+          use_accelerate_endpoint: true,
+        )
+        @dummy = Dummy.new
+        @dummy.avatar = stringy_file
+        @dummy.stubs(:new_record?).returns(false)
+      end
+
+      it "returns a url based on an :s3_host_name path" do
+        assert_match %r{^//s3-accelerate.amazonaws.com/bucket/avatars/data[^\.]},
+          @dummy.avatar.url
+      end
+
+      it "uses the S3 client with the use_accelerate_endpoint config is true" do
+        expect(@dummy.avatar.s3_bucket.client.config.use_accelerate_endpoint).to be(true)
+      end
     end
   end
 
@@ -644,6 +698,7 @@ describe Paperclip::Storage::S3 do
     end
   end
 
+  # the bucket.name is determined by the :s3_region
   context "Parsing S3 credentials with a s3_host_name in them" do
     before do
       rebuild_model storage: :s3,
