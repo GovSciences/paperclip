@@ -23,13 +23,13 @@ module Paperclip
       private
 
       def hasta_la_vista_baby
-        lambda do |_, result|
+        <<-eos
           if result.respond_to?(:call)
             result.call == false
           else
             result == false
           end
-        end
+        eos
       end
     end
 
